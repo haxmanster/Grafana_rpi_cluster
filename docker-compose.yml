@@ -1,0 +1,57 @@
+version: '3'
+
+services:
+   cadvisor:
+      image: carlosedp/rpi-cadvisor
+      container_name: cadvisor
+      volumes:
+         - /:/rootfs:ro
+         - /var/run:/var/run:rw
+         - /sys:/sys:ro
+         - /varlib/docker/:/varlib/docker/:ro
+      restart: unless-stopped
+      expose:
+         - 8080
+   
+   node-exporter:
+      container_name: node-exporter
+      image: datarhei/rpi-node-exporter
+      volumes: 
+         - /proc:/host/proc:ro
+         - /sys:/host/sys:ro
+         - /:/rootfs:ro
+      command: '-collector.procfs=/host/proc -collector.sysfs=/host/sys -collector.filesystem.ignored-mount-points="^(/rootfs|/host|)/(sys|proc|dev|host|etc)($$|/)" collector.filesystem.ignored-fs-types="^(sys|proc|auto|cgroup|devpts|ns|au|fuse\.lxc|mqueue)(fs|)$$"'
+      expose:
+         - 9100
+
+   prometheus:
+      image: carlosedp/prometheus
+      container_name: prometheus
+      volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+      restart: unless-stopped
+      expose:
+         - 9090
+      depends_on:
+         - cadvisor
+         - node-exporter
+         
+   grafana:
+    image: grafana/grafana
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    env_file:
+      - grafana.config
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    depends_on:
+      - prometheus
+volumes:
+    prometheus_data:
+    grafana_data:
+   
+
+
